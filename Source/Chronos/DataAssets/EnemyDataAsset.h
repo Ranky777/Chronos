@@ -27,7 +27,7 @@ struct FEnemyData
 	float AttackRange = 1500.0f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
-	TSubclassOf<UWeaponDataAsset> WeaponDataAsset;
+	TObjectPtr<UWeaponDataAsset> WeaponDataAsset;
 };
 
 
