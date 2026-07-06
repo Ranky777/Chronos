@@ -24,6 +24,11 @@ public:
 	
 	virtual void Tick(float DeltaTime) override;
 	
+	virtual TStatId GetStatId() const override
+	{
+		RETURN_QUICK_DECLARE_CYCLE_STAT(UTimeDilationSubsystem, STATGROUP_Tickables);
+	}
+	
 	UFUNCTION(BlueprintCallable, Category = "Time Dilation")
 	float GetCurrentTimeDilation() const
 	{
