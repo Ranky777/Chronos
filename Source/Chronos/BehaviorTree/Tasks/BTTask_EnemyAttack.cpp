@@ -29,9 +29,9 @@ EBTNodeResult::Type UBTTask_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& Own
 	
 	UWeaponComponent* WeaponComponent = EnemyCharacter->GetWeaponComponent();
 	
-	if (WeaponComponent && WeaponComponent->CanFire())
+	if (WeaponComponent && WeaponComponent->CanFire_Implementation())
 	{
-		WeaponComponent->Fire();
+		WeaponComponent->Fire_Implementation();
 		
 		return EBTNodeResult::Succeeded;
 	}

@@ -24,7 +24,7 @@ void UWeaponComponent::BeginPlay()
 	// 如果有默认武器数据，自动装备
 	if (CurrentWeaponData != nullptr)
 	{
-		EquipWeapon(CurrentWeaponData);
+		Execute_EquipWeapon(this, CurrentWeaponData);
 	}
 }
 
@@ -46,7 +46,8 @@ void UWeaponComponent::EquipWeapon_Implementation(UWeaponDataAsset* WeaponData)
 	CurrentWeaponData = WeaponData;
     
 	// 装满弹药
-	CurrentAmmo = CurrentWeaponData->WeaponData.MagazineSize;
+	MaxAmmo = CurrentWeaponData->WeaponData.MagazineSize;
+	CurrentAmmo = MaxAmmo;
 	
 	UpdateWeaponState();
 }
@@ -58,7 +59,7 @@ UWeaponDataAsset* UWeaponComponent::GetCurrentWeapon_Implementation() const
 
 void UWeaponComponent::Fire_Implementation()
 {
-	if (!CanFire())
+	if (!CanFire_Implementation())
 	{
 		return;
 	}
@@ -83,7 +84,7 @@ void UWeaponComponent::Fire_Implementation()
 
 void UWeaponComponent::Reload_Implementation()
 {
-	if (!CanReload())
+	if (!CanReload_Implementation())
 	{
 		return;
 	}
@@ -212,8 +213,8 @@ void UWeaponComponent::SpawnProjectile() const
 	const FWeaponData& WeaponData = CurrentWeaponData->WeaponData;
 	
 	FTransform SpawnTransform;
-	SpawnTransform.SetLocation(GetMuzzleLocation());
-	SpawnTransform.SetRotation(GetMuzzleRotation().Quaternion());
+	SpawnTransform.SetLocation(GetMuzzleLocation_Implementation());
+	SpawnTransform.SetRotation(GetMuzzleRotation_Implementation().Quaternion());
 	
 	// 从对象池获取子弹
 	AActor* Projectile = PoolSubsystem->GetProjectile(WeaponData.ProjectileClass, SpawnTransform);

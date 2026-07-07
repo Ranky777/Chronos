@@ -124,6 +124,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Game Mode", meta = (ClampMin = 0.0f, ClampMax = 10.0f))
 	float RespawnDelay = 2.0f;
 	
+public:
 	FTimerHandle RespawnTimerHandle;
 	
 	UPROPERTY(BlueprintAssignable, Category = "Game Mode Events")

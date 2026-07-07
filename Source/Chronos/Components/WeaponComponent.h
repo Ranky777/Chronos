@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Chronos/DataAssets/WeaponDataAsset.h"
 #include "Chronos/Interfaces/WeaponUser.h"
 #include "Components/ActorComponent.h"
 #include "WeaponComponent.generated.h"
@@ -47,6 +48,9 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	int32 GetCurrentAmmo() const { return CurrentAmmo; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	int32 GetMaxAmmo() const { return MaxAmmo; }
 
 	/**
 	 * 获取弹匣容量
@@ -115,6 +119,8 @@ private:
 
 	/** 当前弹药数量 */
 	int32 CurrentAmmo = 0;
+	
+	int32 MaxAmmo = 0;
 
 	/** 上次射击时间 */
 	float LastFireTime = 0.0f;
