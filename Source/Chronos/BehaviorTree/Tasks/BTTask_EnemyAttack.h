@@ -20,6 +20,6 @@ public:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 	
 protected:
-	UPROPERTY(EditAnywhere, Category = "Attack")
-	float ShootingFrequency = 1.0f;
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
+	FName LastAttackTimeKey = FName("LastAttackTime");
 };

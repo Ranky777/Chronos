@@ -3,6 +3,7 @@
 
 #include "BTTask_EnemyAttack.h"
 #include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Chronos/Characters/EnemyCharacter.h"
 #include "Chronos/Components/WeaponComponent.h"
 
@@ -29,11 +30,24 @@ EBTNodeResult::Type UBTTask_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& Own
 	
 	UWeaponComponent* WeaponComponent = EnemyCharacter->GetWeaponComponent();
 	
-	if (WeaponComponent && WeaponComponent->CanFire_Implementation())
+	if (!WeaponComponent)
 	{
-		WeaponComponent->Fire_Implementation();
-		
-		return EBTNodeResult::Succeeded;
+		return EBTNodeResult::Failed;
+	}
+	
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float LastAttackTime = OwnerComp.GetBlackboardComponent()->GetValueAsFloat(LastAttackTimeKey);
+	float ShootingFrequency = EnemyCharacter->GetEnemyData().ShootingFrequency;
+	
+	if (CurrentTime - LastAttackTime >= ShootingFrequency)
+	{
+		if (WeaponComponent->CanFire_Implementation())
+		{
+			WeaponComponent->Fire_Implementation();
+			OwnerComp.GetBlackboardComponent()->SetValueAsFloat(LastAttackTimeKey, CurrentTime);
+			
+			return EBTNodeResult::Succeeded;
+		}
 	}
 	
 	return EBTNodeResult::Failed;

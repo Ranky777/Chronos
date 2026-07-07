@@ -5,6 +5,7 @@
 
 #include "Chronos/Components/HealthComponent.h"
 #include "Chronos/Components/WeaponComponent.h"
+#include "Chronos/DataAssets/WeaponDataAsset.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -21,13 +22,19 @@ AEnemyCharacter::AEnemyCharacter()
 	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 300.0f, 0.0f);
-	GetCharacterMovement()->MaxWalkSpeed = 150.0f;	
+	
+	DefaultEnemyData.ShootingFrequency = 2.0f;
+	DefaultEnemyData.MovementSpeed = 150.0f;
+	DefaultEnemyData.DetectionRange = 2000.0f;
+	DefaultEnemyData.AttackRange = 1500.0f;
 }
 
 // Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	ApplyEnemyData();
 	
 	BindDeathEvent();
 	
@@ -69,6 +76,21 @@ bool AEnemyCharacter::IsAlive() const
 	}
 	
 	return !bIsDead;
+}
+
+void AEnemyCharacter::ApplyEnemyData()
+{
+	const FEnemyData& EnemyData = GetEnemyData();
+	
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = EnemyData.MovementSpeed;
+	}
+	
+	if (WeaponComponent && EnemyData.WeaponDataAsset)
+	{
+		WeaponComponent->EquipWeapon_Implementation(EnemyData.WeaponDataAsset);
+	}
 }
 
 

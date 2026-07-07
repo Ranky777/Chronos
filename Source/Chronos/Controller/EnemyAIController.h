@@ -22,7 +22,7 @@ protected:
 	virtual void BeginPlay() override;
 
 protected:
-	virtual void OnProcess(APawn* InPawn);
+	virtual void OnPossess(APawn* InPawn) override;
 	void InitializePerception();
 	
 private:

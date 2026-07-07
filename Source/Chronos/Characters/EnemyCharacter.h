@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Chronos/DataAssets/EnemyDataAsset.h"
 #include "EnemyCharacter.generated.h"
 
 class UHealthComponent;
@@ -52,8 +53,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	void OnEnemyDeath(AActor* Killer);
 
+	/**
+	 * 获取敌人数据资产
+	 * @return 敌人数据资产指针
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	UEnemyDataAsset* GetEnemyDataAsset() const { return EnemyDataAsset; }
+
+	/**
+	 * 获取敌人数据配置
+	 * @return 敌人数据结构
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	const FEnemyData& GetEnemyData() const { return EnemyDataAsset ? EnemyDataAsset->EnemyData : DefaultEnemyData; }
+
 protected:
 	void BindDeathEvent();
+	
+	/**
+	 * 应用敌人数据资产配置
+	 * 将数据资产中的配置应用到角色属性
+	 */
+	void ApplyEnemyData();
 	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -61,6 +82,13 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UWeaponComponent> WeaponComponent;
+
+	/** 敌人数据资产 - 配置敌人属性 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UEnemyDataAsset> EnemyDataAsset;
+
+	/** 默认敌人数据 - 当没有配置数据资产时使用 */
+	FEnemyData DefaultEnemyData;
 
 	bool bIsDead = false;
 };

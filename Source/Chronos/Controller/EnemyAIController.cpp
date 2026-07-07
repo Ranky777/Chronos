@@ -7,6 +7,7 @@
 #include "Runtime/AIModule/Classes/BehaviorTree/BehaviorTreeComponent.h"
 #include "Runtime/AIModule/Classes/BehaviorTree/BlackboardComponent.h"
 #include "Runtime/AIModule/Classes/Perception/AIPerceptionComponent.h"
+#include "Chronos/Characters/EnemyCharacter.h"
 
 
 // Sets default values
@@ -22,7 +23,7 @@ void AEnemyAIController::BeginPlay()
 	InitializePerception();
 }
 
-void AEnemyAIController::OnProcess(APawn* InPawn)
+void AEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
@@ -43,13 +44,23 @@ void AEnemyAIController::InitializePerception()
 	
 	if (!LocalPerceptionComponent)
 	{
-		LocalPerceptionComponent = NewObject<UAIPerceptionComponent>(this);
+		LocalPerceptionComponent = NewObject<UAIPerceptionComponent>(this, TEXT("AIPerceptionComponent"));
 		LocalPerceptionComponent->RegisterComponent();
 	}
 	
-	UAISenseConfig_Sight* SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
-	SightConfig->SightRadius = 2000.0f;
-	SightConfig->LoseSightRadius = 2500.0f;
+	float DetectionRange = 2000.0f;
+	float LoseDetectionRange = 2500.0f;
+	
+	if (AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(GetPawn()))
+	{
+		const FEnemyData& EnemyData = EnemyCharacter->GetEnemyData();
+		DetectionRange = EnemyData.DetectionRange;
+		LoseDetectionRange = EnemyData.DetectionRange * 1.25f;
+	}
+	
+	UAISenseConfig_Sight* SightConfig = NewObject<UAISenseConfig_Sight>(LocalPerceptionComponent, TEXT("SightConfig"));
+	SightConfig->SightRadius = DetectionRange;
+	SightConfig->LoseSightRadius = LoseDetectionRange;
 	SightConfig->PeripheralVisionAngleDegrees = 90.0f;
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = false;
