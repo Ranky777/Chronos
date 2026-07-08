@@ -8,7 +8,7 @@ public class Chronos : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayTags" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayTags", "NavigationSystem" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "AIModule" });
 
