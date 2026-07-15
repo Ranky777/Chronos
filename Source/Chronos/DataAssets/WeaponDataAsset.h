@@ -30,10 +30,7 @@ struct FWeaponData
 	float FireRate = 0.5f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	int32 MagazineSize = 12;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	float ReloadTime = 1.5f;
+	int32 TotalAmmo = 12;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	float BulletSpeed = 1000.0f;
@@ -57,25 +54,17 @@ struct FWeaponData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	FName MuzzleSocketName = FName("MuzzleSocket");
 	
+	/** 第一人称角色AnimBlueprint - 如果使用第一人称视角 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
+	TSubclassOf<UAnimInstance> FPAnimBlueprint;
+	
 	/** 第一人称射击动画蒙太奇 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
 	TObjectPtr<UAnimMontage> FPFireMontage;
 
-	/** 第一人称换弹动画蒙太奇 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
-	TObjectPtr<UAnimMontage> FPReloadMontage;
-
 	/** 第一人称装备动画蒙太奇 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
 	TObjectPtr<UAnimMontage> FPEquipMontage;
-
-	/** 第三人称射击动画蒙太奇 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
-	TObjectPtr<UAnimMontage> TPFireMontage;
-
-	/** 第三人称换弹动画蒙太奇 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animations")
-	TObjectPtr<UAnimMontage> TPReloadMontage;
 };
 
 /**
@@ -90,15 +79,6 @@ public:
 	UWeaponDataAsset();
 	
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
-	FWeaponData WeaponData;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
-	FText WeaponName;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
-	TObjectPtr<UTexture2D> WeaponIcon;
-	
 	/**
 	 * 获取武器类型
 	 * @return 当前武器类型
@@ -126,4 +106,32 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	FName GetMuzzleSocketName() const { return WeaponData.MuzzleSocketName; }
+	
+	// 新增：获取武器总子弹数
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	int32 GetTotalAmmo() const { return WeaponData.TotalAmmo; }
+	
+	/**
+	 * 获取第一人称AnimBlueprint
+	 * @return AnimBlueprint类
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	TSubclassOf<UAnimInstance> GetFPAnimBlueprint() const { return WeaponData.FPAnimBlueprint; }
+	
+	/**
+ * 获取装备动画蒙太奇
+ * @return 装备动画蒙太奇
+ */
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	UAnimMontage* GetEquipMontage() const { return WeaponData.FPEquipMontage; }
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
+	FWeaponData WeaponData;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
+	FText WeaponName;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Data")
+	TObjectPtr<UTexture2D> WeaponIcon;
 };

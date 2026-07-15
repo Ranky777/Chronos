@@ -36,7 +36,11 @@ void AChronosGameMode::RestartLevel()
 
 void AChronosGameMode::HandlePlayerDeath(AActor* Killer)
 {
-	// 获取玩家角色
+	FString KillerName = Killer ? Killer->GetName() : TEXT("Unknown");
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, 
+		FString::Printf(TEXT("[GameMode] HandlePlayerDeath - Killer=%s"), 
+		*KillerName));
+
 	APlayerCharacter* PlayerCharacter = nullptr;
 	TArray<AActor*> PlayerActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), PlayerActors);
@@ -46,21 +50,32 @@ void AChronosGameMode::HandlePlayerDeath(AActor* Killer)
 		PlayerCharacter = Cast<APlayerCharacter>(PlayerActors[0]);
 	}
 	
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, 
+		FString::Printf(TEXT("[GameMode] SetGameState to GameOver")));
 	SetGameState(EGameState::GameOver);
 	
-	// 延迟重生玩家
 	if (PlayerCharacter)
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, 
+			FString::Printf(TEXT("[GameMode] Setting respawn timer, Delay=%f"), 
+			RespawnDelay));
 		GetWorldTimerManager().SetTimer(
 			RespawnTimerHandle, 
 			[this, PlayerCharacter]()
 			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, 
+					TEXT("[GameMode] RespawnTimer fired - calling RespawnPlayer"));
 				PlayerCharacter->RespawnPlayer();
 				SetGameState(EGameState::Playing);
 			},
 			RespawnDelay,
 			false
 		);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, 
+			TEXT("[GameMode] PlayerCharacter is null!"));
 	}
 }
 

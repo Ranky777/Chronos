@@ -23,8 +23,18 @@ void UHealthComponent::BeginPlay()
 
 void UHealthComponent::TakeDamage_Implementation(float DamageAmount, AActor* DamageCauser)
 {
+    FString OwnerName = GetOwner() ? FString(GetOwner()->GetName()) : TEXT("NoOwner");
+    FString CauserName = DamageCauser ? FString(DamageCauser->GetName()) : TEXT("Unknown");
+    
+    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, 
+        FString::Printf(TEXT("[HealthComponent] TakeDamage - Owner=%s, Damage=%f, Causer=%s"), 
+        *OwnerName, DamageAmount, *CauserName));
+
     if (IsDead())
     {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, 
+            FString::Printf(TEXT("[HealthComponent] TakeDamage: %s is already dead"), 
+            *OwnerName));
         return;
     }
 
@@ -40,8 +50,18 @@ bool UHealthComponent::IsAlive_Implementation() const
 
 void UHealthComponent::Die_Implementation(AActor* Killer)
 {
+    FString OwnerName = GetOwner() ? FString(GetOwner()->GetName()) : TEXT("NoOwner");
+    FString KillerName = Killer ? FString(Killer->GetName()) : TEXT("Unknown");
+    
+    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, 
+        FString::Printf(TEXT("[HealthComponent] Die - Owner=%s, Killer=%s"), 
+        *OwnerName, *KillerName));
+
     if (IsDead())
     {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, 
+            FString::Printf(TEXT("[HealthComponent] Die: %s is already dead"), 
+            *OwnerName));
         return;
     }
 

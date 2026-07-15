@@ -19,11 +19,20 @@ void UChronosHUD::UpdateTimeDilation(float NewTimeDilation, float OldTimeDilatio
 	}
 }
 
-void UChronosHUD::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+void UChronosHUD::UpdateAmmo(int32 RemainingAmmo, int32 TotalAmmo)
 {
 	if (AmmoText)
 	{
-		AmmoText->SetText(FText::Format(NSLOCTEXT("ChronosHUD", "AmmoFormat", "AMMO: {0}/{1}"), CurrentAmmo, MaxAmmo));
+		if (TotalAmmo > 0)
+		{
+			// SUPERHOT风格：只显示剩余子弹数，无弹匣概念
+			AmmoText->SetText(FText::Format(NSLOCTEXT("ChronosHUD", "AmmoFormat", "AMMO: {0}"), RemainingAmmo));
+		}
+		else
+		{
+			// 无武器时显示为空或提示
+			AmmoText->SetText(FText::GetEmpty());
+		}
 	}
 }
 
@@ -113,9 +122,15 @@ void UChronosHUD::BindWeaponEvents()
 	if (PlayerCharacter && PlayerCharacter->GetWeaponComponent())
 	{
 		UWeaponComponent* WeaponComponent = PlayerCharacter->GetWeaponComponent();
+		
+		WeaponComponent->OnWeaponChanged.AddDynamic(this, &UChronosHUD::OnWeaponChanged);
         
 		// 更新初始弹药显示
-		UpdateAmmo(WeaponComponent->GetCurrentAmmo(), WeaponComponent->GetMaxAmmo());
+		int32 RemainingAmmo = WeaponComponent->GetRemainingAmmo();
+		int32 TotalAmmo = WeaponComponent->GetCurrentWeapon_Implementation() 
+			? WeaponComponent->GetCurrentWeapon_Implementation()->GetTotalAmmo() 
+			: 0;
+		UpdateAmmo(RemainingAmmo, TotalAmmo);
 	}
 }
 
@@ -134,5 +149,47 @@ void UChronosHUD::HandleGameStateChanged(EGameState NewState)
 		break;
 	default:
 		break;
+	}
+}
+
+void UChronosHUD::OnWeaponChanged(UWeaponDataAsset* NewWeapon)
+{
+	APlayerCharacter* PlayerCharacter = nullptr;
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetOwningPlayer()))
+	{
+		PlayerCharacter = Cast<APlayerCharacter>(PlayerController->GetPawn());
+	}
+	
+	if (PlayerCharacter && PlayerCharacter->GetWeaponComponent())
+	{
+		UWeaponComponent* WeaponComponent = PlayerCharacter->GetWeaponComponent();
+		
+		int32 RemainingAmmo = WeaponComponent->GetRemainingAmmo();
+		int32 TotalAmmo = NewWeapon ? NewWeapon->GetTotalAmmo() : 0;
+		UpdateAmmo(RemainingAmmo, TotalAmmo);
+	}
+	else
+	{
+		UpdateAmmo(0, 0);
+	}
+}
+
+void UChronosHUD::OnWeaponFired()
+{
+	APlayerCharacter* PlayerCharacter = nullptr;
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetOwningPlayer()))
+	{
+		PlayerCharacter = Cast<APlayerCharacter>(PlayerController->GetPawn());
+	}
+	
+	if (PlayerCharacter && PlayerCharacter->GetWeaponComponent())
+	{
+		UWeaponComponent* WeaponComponent = PlayerCharacter->GetWeaponComponent();
+		
+		int32 RemainingAmmo = WeaponComponent->GetRemainingAmmo();
+		int32 TotalAmmo = WeaponComponent->GetCurrentWeapon_Implementation() 
+			? WeaponComponent->GetCurrentWeapon_Implementation()->GetTotalAmmo() 
+			: 0;
+		UpdateAmmo(RemainingAmmo, TotalAmmo);
 	}
 }

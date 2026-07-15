@@ -19,7 +19,15 @@ public:
 	
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 	
+	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+	
 protected:
 	UPROPERTY(EditAnywhere, Category = "Blackboard")
 	FName LastAttackTimeKey = FName("LastAttackTime");
+	
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
+	FName TargetActorKey = FName("TargetActor");
+	
+	UPROPERTY(EditAnywhere, Category = "Attack", meta = (ClampMin = 0.1f, ClampMax = 10.0f))
+	float MaxAttackDistance = 1500.0f;
 };

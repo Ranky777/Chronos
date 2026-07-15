@@ -6,6 +6,7 @@
 #include "Chronos/Components/HealthComponent.h"
 #include "Chronos/Components/WeaponComponent.h"
 #include "Chronos/DataAssets/WeaponDataAsset.h"
+#include "Chronos/Interactables/WeaponPickup.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -65,7 +66,10 @@ void AEnemyCharacter::OnEnemyDeath(AActor* Killer)
 	if (GetMesh())
 	{
 		GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetMesh()->SetSimulatePhysics(true);
 	}
+	
+	DropWeaponOnDeath();
 }
 
 bool AEnemyCharacter::IsAlive() const
@@ -91,6 +95,47 @@ void AEnemyCharacter::ApplyEnemyData()
 	{
 		WeaponComponent->EquipWeapon_Implementation(EnemyData.WeaponDataAsset);
 	}
+}
+
+void AEnemyCharacter::DropWeaponOnDeath()
+{
+	if (!WeaponComponent || !GetWorld())
+	{
+		return;
+	}
+	
+	UWeaponDataAsset* CurrentWeapon = WeaponComponent->GetCurrentWeapon_Implementation();
+	if (!CurrentWeapon)
+	{
+		return;
+	}
+	
+	FVector DropLocation = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
+	FVector DropVelocity = FVector(
+		FMath::FRandRange(-100.0f, 100.0f),
+		FMath::FRandRange(-100.0f, 100.0f),
+		FMath::FRandRange(100.0f, 300.0f)
+	);
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	AWeaponPickup* Pickup = GetWorld()->SpawnActor<AWeaponPickup>(AWeaponPickup::StaticClass(), DropLocation, GetActorRotation(), SpawnParams);
+	
+	if (Pickup)
+	{
+		Pickup->SetWeaponDataAsset(CurrentWeapon);
+		
+		USkeletalMeshComponent* MeshComp = Pickup->FindComponentByClass<USkeletalMeshComponent>();
+		if (MeshComp)
+		{
+			MeshComp->SetPhysicsLinearVelocity(DropVelocity);
+		}
+	}
+	
+	// 卸载当前武器
+	WeaponComponent->EquipWeapon_Implementation(nullptr);
 }
 
 

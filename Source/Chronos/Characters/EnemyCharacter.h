@@ -76,6 +76,8 @@ protected:
 	 */
 	void ApplyEnemyData();
 	
+	void DropWeaponOnDeath();
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHealthComponent> HealthComponent;
@@ -88,6 +90,7 @@ private:
 	TObjectPtr<UEnemyDataAsset> EnemyDataAsset;
 
 	/** 默认敌人数据 - 当没有配置数据资产时使用 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (AllowPrivateAccess = "true"))
 	FEnemyData DefaultEnemyData;
 
 	bool bIsDead = false;

@@ -10,6 +10,7 @@
 UBTTask_EnemyAttack::UBTTask_EnemyAttack()
 {
 	NodeName = "Enemy Attack";
+	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UBTTask_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -30,9 +31,54 @@ EBTNodeResult::Type UBTTask_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& Own
 	
 	UWeaponComponent* WeaponComponent = EnemyCharacter->GetWeaponComponent();
 	
-	if (!WeaponComponent)
+	if (!WeaponComponent || !WeaponComponent->HasWeapon())
 	{
 		return EBTNodeResult::Failed;
+	}
+	
+	return EBTNodeResult::InProgress;
+}
+
+void UBTTask_EnemyAttack::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+	Super::TickTask(OwnerComp, NodeMemory, DeltaSeconds);
+	
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	
+	if (!AIController)
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(AIController->GetPawn());
+	
+	if (!EnemyCharacter || !EnemyCharacter->IsAlive())
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	UWeaponComponent* WeaponComponent = EnemyCharacter->GetWeaponComponent();
+	
+	if (!WeaponComponent || !WeaponComponent->HasWeapon())
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	AActor* TargetActor = Cast<AActor>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(TargetActorKey));
+	if (!TargetActor)
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	float Distance = FVector::Distance(EnemyCharacter->GetActorLocation(), TargetActor->GetActorLocation());
+	if (Distance > MaxAttackDistance)
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
 	}
 	
 	float CurrentTime = GetWorld()->GetTimeSeconds();
@@ -45,10 +91,6 @@ EBTNodeResult::Type UBTTask_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& Own
 		{
 			WeaponComponent->Fire_Implementation();
 			OwnerComp.GetBlackboardComponent()->SetValueAsFloat(LastAttackTimeKey, CurrentTime);
-			
-			return EBTNodeResult::Succeeded;
 		}
 	}
-	
-	return EBTNodeResult::Failed;
 }

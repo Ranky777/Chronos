@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "ChronosHUD.generated.h"
 
+class UWeaponDataAsset;
 enum class EGameState : uint8;
 class UTextBlock;
 /**
@@ -25,11 +26,11 @@ public:
 	
 	/**
 	 * 更新弹药显示
-	 * @param CurrentAmmo 当前弹药数
-	 * @param MaxAmmo 最大弹药数
+	 * @param RemainingAmmo 剩余弹药数
+	 * @param TotalAmmo 总弹药数
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo);
+	void UpdateAmmo(int32 RemainingAmmo, int32 TotalAmmo);
 
 	/**
 	 * 更新敌人数量显示
@@ -78,6 +79,12 @@ protected:
 private:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void HandleGameStateChanged(EGameState NewState);
+	
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void OnWeaponChanged(UWeaponDataAsset* NewWeapon);
+	
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void OnWeaponFired();
 	
 private:
 	/** 时间流速文本 */

@@ -102,6 +102,7 @@ void APlayerCharacter::OnPlayerDeath(AActor *Killer)
 	if (APlayerController *PlayerController = Cast<APlayerController>(GetController()))
 	{
 		PlayerController->DisableInput(PlayerController);
+		SetGameInputMode();
 	}
 
 	if (UTimeDilationSubsystem *TimeSubsystem = ChronosSubsystems::GetTimeDilationSubsystem(GetWorld()))
@@ -129,6 +130,7 @@ void APlayerCharacter::RespawnPlayer()
 	if (APlayerController *PlayerController = Cast<APlayerController>(GetController()))
 	{
 		PlayerController->EnableInput(PlayerController);
+		SetGameInputMode();
 	}
 
 	CurrentPitch = 0.0f;
@@ -194,8 +196,11 @@ void APlayerCharacter::HandleFireInput()
 
 void APlayerCharacter::HandleThrowInput()
 {
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, TEXT("[Player] HandleThrowInput called"));
+	
 	if (bIsDead)
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("[Player] HandleThrowInput: Player is dead!"));
 		return;
 	}
 
@@ -203,7 +208,12 @@ void APlayerCharacter::HandleThrowInput()
 
 	if (WeaponComponent && WeaponComponent->CanThrow_Implementation())
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("[Player] HandleThrowInput: Calling ThrowWeapon"));
 		WeaponComponent->ThrowWeapon_Implementation();
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, TEXT("[Player] HandleThrowInput: Cannot throw"));
 	}
 }
 
@@ -226,4 +236,24 @@ void APlayerCharacter::UpdateInputActivity()
 
 	bHasInputActivity = false;
 	bIsFiring = false;
+}
+
+void APlayerCharacter::SetGameInputMode()
+{
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		FInputModeGameOnly InputMode;
+		PlayerController->SetInputMode(InputMode);
+		PlayerController->bShowMouseCursor = false;
+	}
+}
+
+void APlayerCharacter::SetUIInputMode()
+{
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		FInputModeUIOnly InputMode;
+		PlayerController->SetInputMode(InputMode);
+		PlayerController->bShowMouseCursor = true;
+	}
 }

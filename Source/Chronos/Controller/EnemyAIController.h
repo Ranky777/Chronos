@@ -6,6 +6,7 @@
 #include "Runtime/AIModule/Classes/AIController.h"
 #include "EnemyAIController.generated.h"
 
+struct FAIStimulus;
 class UBehaviorTreeComponent;
 
 UCLASS()
@@ -20,15 +21,18 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	
+	UFUNCTION()
+	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	void InitializePerception();
 	
 private:
-	UPROPERTY(EditAnywhere, Category = "AI")
+	UPROPERTY(EditDefaultsOnly, Category = "AI", meta = (DisplayPriority = "1"))
 	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
 	
-	UPROPERTY(EditAnywhere, Category = "AI")
+	UPROPERTY(EditDefaultsOnly, Category = "AI", meta = (DisplayPriority = "2"))
 	TObjectPtr<UBlackboardData> BlackboardAsset;
 };

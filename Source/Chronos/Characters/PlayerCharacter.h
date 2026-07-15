@@ -55,6 +55,9 @@ protected:
 	void BindDeathEvent();
 	void UpdateInputActivity();
 	
+	void SetGameInputMode();
+	void SetUIInputMode();
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHealthComponent> HealthComponent;
