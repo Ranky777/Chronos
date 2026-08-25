@@ -3,6 +3,13 @@
 	"EngineAssociation": "{3B820A57-4580-365F-BE0E-6AA3FB8BCBD2}",
 	"Category": "",
 	"Description": "",
+	"Modules": [
+		{
+			"Name": "Chronos_New",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
 	"Plugins": [
 		{
 			"Name": "ModelingToolsEditorMode",
