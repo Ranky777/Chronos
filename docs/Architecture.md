@@ -8,6 +8,13 @@ SUPERHOT 风格第一人称 Arena Shooter 求职项目。C++ 系统 + 蓝图表�
 ## C++ 单元
 （随任务填充：类名 / 文件 / 职责一句话）
 
+| 类 | 文件 | 职责 |
+|---|---|---|
+| AChronosGameMode | Source/Chronos_New/GameFlow/ChronosGameMode.h/.cpp | 敌人注册/注销计数（OnEnemyCountChanged）、清关广播（OnLevelCleared）、多关卡推进（LevelList/RestartLevel/LoadNextLevel）、击杀触发子弹时间 |
+| AChronosEnemy | Source/Chronos_New/Characters/ChronosEnemy.h/.cpp | 敌人基类：出生按 EnemyWeaponData 自动生成并装备武器、SetCombatTarget/GetCombatTarget、无相机时瞄准回退到朝目标方向、BeginPlay 自注册到 AChronosGameMode |
+
+自动化测试：Source/Chronos_New/Tests/ChronosGameFlowTests.cpp（编辑器 Automation "Chronos.GameFlow.*" 2 用例：注册清关计数 / 出生自动装备+瞄准；监听器 UChronosTestListener 在 Tests/ChronosTestListener.h）
+
 ## 蓝图资产
 （随任务填充：资产路径 / 父类 / 用途）
 

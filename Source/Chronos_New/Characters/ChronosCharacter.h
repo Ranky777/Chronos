@@ -85,9 +85,9 @@ public:
 	/** 武器附加插槽名 */
 	FName GetHeldWeaponSocketName() const;
 
-	/** 当前视线方向（相机朝向） */
+	/** 当前视线方向（相机朝向）；virtual 供敌人子类回退到朝目标瞄准（AChronosEnemy） */
 	UFUNCTION(BlueprintPure, Category = "Chronos|Aim")
-	FVector GetAimDirection() const;
+	virtual FVector GetAimDirection() const;
 
 	/** 视线落点：沿视线做距离 100m 的射线检测，未命中返回视线远端点 */
 	UFUNCTION(BlueprintCallable, Category = "Chronos|Aim")

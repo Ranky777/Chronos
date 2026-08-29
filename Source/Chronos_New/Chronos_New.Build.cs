@@ -33,5 +33,11 @@ public class Chronos_New : ModuleRules
 		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
 
 		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
+
+		// 自动化测试需要 UnrealEd（FAutomationEditorCommonUtils/CreateWorld 场景）
+		if (Target.Type == TargetType.Editor)
+		{
+			PrivateDependencyModuleNames.Add("UnrealEd");
+		}
 	}
 }
