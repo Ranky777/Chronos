@@ -5,6 +5,7 @@
 #include "Characters/ChronosEnemy.h"
 #include "Components/CombatComponent.h"
 #include "Components/HealthComponent.h"
+#include "Components/SceneComponent.h"
 #include "GameFlow/ChronosGameMode.h"
 #include "Projectiles/Projectile.h"
 #include "Tests/ChronosTestListener.h"
@@ -76,13 +77,17 @@ bool FChronosEnemy_AimAndAutoEquip::RunTest(const FString& Parameters)
 	Enemy->EnemyWeaponData = Data;
 
 	AActor* Target = World->SpawnActor<AActor>();
-	Target->SetActorLocation(FVector(1000.f, 0.f, 0.f));
+	// 裸 AActor 无 RootComponent，SetActorLocation 是静默 no-op（Actor.cpp L4987），
+	// 必须先挂一个根场景组件，目标才能真正离开原点
+	Target->SetRootComponent(NewObject<USceneComponent>(Target));
+	Target->GetRootComponent()->RegisterComponent();
+	Target->SetActorLocation(FVector(0.f, 1000.f, 0.f));
 	Enemy->SetCombatTarget(Target);
 
 	BeginPlayTestWorld(World);
 
 	TestTrue("出生自动装备武器", Enemy->GetCombatComponent()->GetCurrentWeapon().GetObject() != nullptr);
-	TestTrue("无相机时朝目标瞄准", Enemy->GetAimDirection().Equals(FVector::ForwardVector, 0.01f));
+	TestTrue("无相机时朝目标瞄准", Enemy->GetAimDirection().Equals(FVector::RightVector, 0.01f));
 
 	World->DestroyWorld(false);
 	return true;
