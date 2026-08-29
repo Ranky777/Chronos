@@ -17,10 +17,28 @@ SUPERHOT 风格第一人称 Arena Shooter 求职项目。C++ 系统 + 蓝图表�
 自动化测试：Source/Chronos_New/Tests/ChronosGameFlowTests.cpp（编辑器 Automation "Chronos.GameFlow.*" 2 用例：注册清关计数 / 出生自动装备+瞄准；监听器 UChronosTestListener 在 Tests/ChronosTestListener.h）
 
 ## 蓝图资产
-（随任务填充：资产路径 / 父类 / 用途）
+| 资产 | 父类 | 用途 |
+|---|---|---|
+| /Game/Variant_Shooter/Blueprints/Pickups/BP_ShooterWeaponBase | AChronosWeapon | 武器基类 BP：旧模板开火逻辑已删（10 变量 + Fire Bullet 函数），仅保留 Firing Montage、FP/TP Anim Instance、噪声参数、Pawn Owner、Calculate Bullet Spawn Transform，及 5 个空存根事件（BeginPlay/StartFiring/StopFiring/ActivateWeapon/DeactivateWeapon，供跨 BP 编译兼容） |
+| /Game/Variant_Shooter/Blueprints/Pickups/Weapons/BP_ShooterWeapon_Pistol | BP_ShooterWeaponBase | 手枪：CDO WeaponData=DA_Pistol；OnFireVisuals 播 MM_Pistol_Fire_Montage（FP 手臂），OnEquipVisuals 空实现 |
+| /Game/Variant_Shooter/Blueprints/Pickups/Weapons/BP_ShooterWeapon_Rifle | BP_ShooterWeaponBase | 步枪：CDO WeaponData=DA_Rifle；OnFireVisuals 播 FP_Rifle_Shoot_Montage |
+| /Game/Variant_Shooter/Blueprints/Pickups/Weapons/BP_ShooterWeapon_GrenadeLauncher | BP_ShooterWeaponBase | 榴弹发射器：CDO WeaponData=DA_GrenadeLauncher（ProjectileClass 为空，弹道走 BP）；OnFireVisuals 在枪口 socket 位姿处 SpawnActor BP_ShooterProjectile_Grenade + PlaySound2D |
+| /Game/Blueprints/Weapons/BP_Pistol | （已删除） | Task 3 临时武器 BP，Task 4 已删除（无引用、无关卡实例） |
+
+## 数据资产
+（UWeaponDataAsset 实例，/Game/DataAssets/ 下；字段见 Source/Chronos_New/Weapons/WeaponDataAsset.h）
+
+| 资产 | WeaponName | 网格 | 弹药/射速/全自动/弹速 | ProjectileClass | FireMontage |
+|---|---|---|---|---|---|
+| DA_Pistol | 手枪 | SKM_Pistol | 8 / 5 / 否 / 6000 | ChronosProjectile | MM_Pistol_Fire_Montage |
+| DA_Rifle | 步枪 | SKM_Rifle | 20 / 8 / 是 / 8000 | ChronosProjectile | FP_Rifle_Shoot_Montage |
+| DA_GrenadeLauncher | 榴弹发射器 | SKM_GrenadeLauncher | 3 / 1 / 否 / 4000 | 空（BP 自管生成榴弹） | FP_Rifle_Shoot_Montage |
+| DA_Enemy_Pistol | 敌用手枪 | SKM_Pistol | 3 / 1 / 否 / 6000 | ChronosProjectile | 无（敌人无声） |
+
+MuzzleSocketName=Muzzle（实测三把网格均有该 socket）、HandSocketName=hand_rWeaponSocket、ThrowSpeed=1500 四资产一致。关卡直放的武器实例由 AChronosWeapon::BeginPlay 检测到 WeaponData+无网格+零弹药后自动 InitFromData。
 
 ## 关卡
-（随任务填充）
+- /Game/FirstPerson/Lvl_FirstPerson：PIE 冒烟关卡，PlayerStart 前方 (120,0,100) 放有一把 BP_ShooterWeapon_Pistol 实例（Task 4 冒烟验证用，Task 9 L01 完成后由正式关卡取代）
 
 ## 构建与运行
 - 引擎：UE 5.8（EngineAssociation "5.8"，安装于 D:/Unreal/UE_5.8）
