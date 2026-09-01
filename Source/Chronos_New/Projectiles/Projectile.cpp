@@ -8,6 +8,7 @@
 #include "NiagaraSystem.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "Subsystems/ProjectilePoolSubsystem.h"
+#include "Subsystems/TimeDilationSubsystem.h"
 
 AChronosProjectile::AChronosProjectile()
 {
@@ -82,6 +83,15 @@ void AChronosProjectile::ActivateProjectile(AActor* NewInstigator, const FVector
 
 	bActive = 1;
 	ProjectileMovement->Activate(true);
+
+	if (UTimeDilationSubsystem* Time = GetWorld()->GetSubsystem<UTimeDilationSubsystem>())
+	{
+		if (!Time->OnDilationChanged.IsAlreadyBound(this, &AChronosProjectile::HandleTimeDilationChanged))
+		{
+			Time->OnDilationChanged.AddDynamic(this, &AChronosProjectile::HandleTimeDilationChanged);
+		}
+		HandleTimeDilationChanged(Time->GetCurrentDilation());
+	}
 }
 
 void AChronosProjectile::DeactivateProjectile()
@@ -98,6 +108,21 @@ void AChronosProjectile::DeactivateProjectile()
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	OnProjectileDeactivated.Broadcast(this);
+}
+
+void AChronosProjectile::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (UTimeDilationSubsystem* Time = GetWorld()->GetSubsystem<UTimeDilationSubsystem>())
+	{
+		Time->OnDilationChanged.RemoveDynamic(this, &AChronosProjectile::HandleTimeDilationChanged);
+	}
+	Super::EndPlay(Reason);
+}
+
+void AChronosProjectile::HandleTimeDilationChanged(float NewDilation)
+{
+	// 慢门（值越小越慢）时尾迹更亮，强化"时间凝固的子弹"读感
+	TrailComponent->SetVariableFloat(TEXT("User.TimeDilation"), NewDilation);
 }
 
 void AChronosProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
