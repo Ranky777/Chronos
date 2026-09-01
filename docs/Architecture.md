@@ -14,6 +14,7 @@ SUPERHOT 风格第一人称 Arena Shooter 求职项目。C++ 系统 + 蓝图表�
 | AChronosEnemy | Source/Chronos_New/Characters/ChronosEnemy.h/.cpp | 敌人基类：出生按 EnemyWeaponData 自动生成并装备武器、SetCombatTarget/GetCombatTarget、无相机时瞄准回退到朝目标方向、BeginPlay 自注册到 AChronosGameMode；Task 6 增 GetPerceivedTarget（AI 感知→玩家 Pawn 兜底）与 HasLineOfSightToCombatTarget（视锥半角 35°+5 条垂直射线），供 StateTree 任务侧解析目标与视线门控 |
 | AChronosPlayerController | Source/Chronos_New/GameFlow/ChronosPlayerController.h/.cpp | 玩家控制器：常驻 HUD 与流程界面（HUD/LevelTransition/Victory/Defeat 四个 WidgetClass）、监听 OnLevelCleared/OnCharacterDeath、FinishLevelTransition 推进下一关、R 键重开当前关 |
 | AChronosProjectile | Source/Chronos_New/Projectiles/Projectile.h/.cpp | 池化子弹：直线无重力飞行、一击必杀（UHealthComponent）、命中物理体施加冲量；Task 5 起订阅 UTimeDilationSubsystem::OnDilationChanged（ActivateProjectile 绑定 + 立即同步当前值，EndPlay 解绑），HandleTimeDilationChanged 把当前时间缩放写入 Niagara 用户参数 User.TimeDilation，实现慢门时尾迹增亮（1/max(dilation,0.05)） |
+| UTimeDilationSubsystem | Source/Chronos_New/Subsystems/TimeDilationSubsystem.h/.cpp | SUPERHOT 式全局时间门：真实时间戳判定输入活跃窗口（0.1s）——无输入→SlowDilation(0.05)、有输入→1.0，用真实时差插值避免膨胀失真；击杀子弹时间 Override、玩家死亡强制恢复满速。开局即慢门（首帧直接 ApplyDilation(SlowDilation)，LastInputRealTime 初值 0 = "从未输入"），世界等你动 |
 
 自动化测试：Source/Chronos_New/Tests/ChronosGameFlowTests.cpp（编辑器 Automation "Chronos.GameFlow.*" 2 用例：注册清关计数 / 出生自动装备+瞄准；监听器 UChronosTestListener 在 Tests/ChronosTestListener.h）
 

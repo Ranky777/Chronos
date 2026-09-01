@@ -22,7 +22,10 @@ void UTimeDilationSubsystem::Tick(float DeltaTime)
 	if (!bInitialized)
 	{
 		LastRealTime = Now;
-		LastInputRealTime = Now;
+		// LastInputRealTime 保持构造初值 0：PIE 开局视为"从未输入"，直接落入慢门
+		//（SUPERHOT 语义：世界等你动）。CurrentDilation 构造值为 1.f，
+		// 必须在此显式 ApplyDilation 才能把 SlowDilation 写进 WorldSettings 并广播。
+		ApplyDilation(SlowDilation);
 		bInitialized = true;
 		return;
 	}
