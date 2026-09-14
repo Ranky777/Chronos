@@ -1,5 +1,9 @@
 #include "Characters/ChronosCharacter.h"
 
+#include "AIController.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "BrainComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CombatComponent.h"
@@ -7,7 +11,9 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Feedback/ChronosFeedbackSubsystem.h"
 #include "Engine/LocalPlayer.h"
+#include "Settings/ChronosGameUserSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Interactables/Interactable.h"
 #include "Subsystems/TimeDilationSubsystem.h"
@@ -27,6 +33,17 @@ void AChronosCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	CachedCamera = FindComponentByClass<UCameraComponent>();
+
+	// 应用玩家设置：灵敏度与 FOV 都在设置面板里，角色是唯一知道相机在哪的一层
+	if (const UChronosGameUserSettings* Settings = UChronosGameUserSettings::GetChronosSettings())
+	{
+		MouseSensitivity = Settings->MouseSensitivity;
+
+		if (CachedCamera)
+		{
+			CachedCamera->SetFieldOfView(Settings->FieldOfView);
+		}
+	}
 
 	HealthComponent->OnDeath.AddDynamic(this, &AChronosCharacter::HandleDeath);
 
@@ -115,6 +132,8 @@ void AChronosCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	if (IA_Fire)
 	{
 		Input->BindAction(IA_Fire, ETriggerEvent::Started, this, &AChronosCharacter::OnFireStarted);
+		// 松开：全自动武器必须靠它停止连发，否则按一次就打不停
+		Input->BindAction(IA_Fire, ETriggerEvent::Completed, this, &AChronosCharacter::OnFireCompleted);
 	}
 	if (IA_Throw)
 	{
@@ -152,8 +171,16 @@ void AChronosCharacter::OnLook(const FInputActionValue& Value)
 	}
 
 	const FVector2D LookVector = Value.Get<FVector2D>();
+
+	// 反转 Y 轴从设置里实时读：设置面板改完切回游戏立刻生效，不需要重新 Possess
+	float PitchSign = 1.f;
+	if (const UChronosGameUserSettings* Settings = UChronosGameUserSettings::GetChronosSettings())
+	{
+		PitchSign = Settings->bInvertMouseY ? -1.f : 1.f;
+	}
+
 	AddControllerYawInput(LookVector.X * MouseSensitivity);
-	AddControllerPitchInput(LookVector.Y * MouseSensitivity);
+	AddControllerPitchInput(LookVector.Y * MouseSensitivity * PitchSign);
 }
 
 void AChronosCharacter::OnJumpStarted(const FInputActionValue& Value)
@@ -196,6 +223,17 @@ void AChronosCharacter::OnFireStarted(const FInputActionValue& Value)
 	}
 }
 
+void AChronosCharacter::OnFireCompleted(const FInputActionValue& Value)
+{
+	// 松开就停火：全自动武器在 Tick 里按射速连发，靠这里结束。
+	// 武器切换/投掷/死亡时 EnterWorldState 也会置 bIsFiring=false 兜底。
+	TScriptInterface<IWeaponUser> Weapon = CombatComponent->GetCurrentWeapon();
+	if (Weapon.GetObject())
+	{
+		IWeaponUser::Execute_StopFiring(Weapon.GetObject());
+	}
+}
+
 void AChronosCharacter::OnThrowStarted(const FInputActionValue& Value)
 	{
 		if (UTimeDilationSubsystem* TimeSubsystem = GetWorld()->GetSubsystem<UTimeDilationSubsystem>())
@@ -205,7 +243,14 @@ void AChronosCharacter::OnThrowStarted(const FInputActionValue& Value)
 
 		if (CombatComponent->GetCurrentWeapon().GetObject())
 		{
+			// 先扔：内部会还原无武器动画实例，之后播投掷蒙太奇才会落在正确的实例上
 			CombatComponent->ThrowCurrentWeapon(GetAimDirection());
+			PlayWeaponMontage(ThrowMontage);
+
+			if (UChronosFeedbackSubsystem* Feedback = GetWorld()->GetSubsystem<UChronosFeedbackSubsystem>())
+			{
+				Feedback->NotifyWeaponThrown(GetActorLocation());
+			}
 		}
 	}
 
@@ -225,9 +270,8 @@ void AChronosCharacter::OnInteractStarted(const FInputActionValue& Value)
 	}
 }
 
-USkeletalMeshComponent* AChronosCharacter::GetHeldWeaponAttachComponent() const
+USkeletalMeshComponent* AChronosCharacter::GetFirstPersonMesh() const
 {
-	// 优先第一人称手臂网格（仅拥有者可见），找不到则退回第三人称网格
 	TArray<USkeletalMeshComponent*> SkeletalMeshes;
 	GetComponents<USkeletalMeshComponent>(SkeletalMeshes);
 	for (USkeletalMeshComponent* SkeletalMesh : SkeletalMeshes)
@@ -238,7 +282,110 @@ USkeletalMeshComponent* AChronosCharacter::GetHeldWeaponAttachComponent() const
 		}
 	}
 
+	return nullptr;
+}
+
+USkeletalMeshComponent* AChronosCharacter::GetHeldWeaponAttachComponent() const
+{
+	// 优先第一人称手臂网格（仅拥有者可见），找不到则退回第三人称网格
+	if (USkeletalMeshComponent* FirstPersonMesh = GetFirstPersonMesh())
+	{
+		return FirstPersonMesh;
+	}
+
 	return GetMesh();
+}
+
+void AChronosCharacter::CacheDefaultAnimClasses()
+{
+	if (bDefaultAnimClassesCached)
+	{
+		return;
+	}
+	bDefaultAnimClassesCached = true;
+
+	if (!DefaultFirstPersonAnimClass)
+	{
+		if (const USkeletalMeshComponent* FirstPersonMesh = GetFirstPersonMesh())
+		{
+			DefaultFirstPersonAnimClass = FirstPersonMesh->AnimClass;
+		}
+	}
+
+	if (!DefaultThirdPersonAnimClass)
+	{
+		if (const USkeletalMeshComponent* BodyMesh = GetMesh())
+		{
+			DefaultThirdPersonAnimClass = BodyMesh->AnimClass;
+		}
+	}
+}
+
+void AChronosCharacter::SetWeaponAnimClasses(TSubclassOf<UAnimInstance> FirstPersonAnimClass,
+	TSubclassOf<UAnimInstance> ThirdPersonAnimClass)
+{
+	CacheDefaultAnimClasses();
+
+	if (FirstPersonAnimClass)
+	{
+		if (USkeletalMeshComponent* FirstPersonMesh = GetFirstPersonMesh())
+		{
+			FirstPersonMesh->SetAnimInstanceClass(FirstPersonAnimClass);
+		}
+	}
+
+	if (ThirdPersonAnimClass && GetMesh())
+	{
+		GetMesh()->SetAnimInstanceClass(ThirdPersonAnimClass);
+	}
+}
+
+void AChronosCharacter::RestoreDefaultAnimClasses()
+{
+	CacheDefaultAnimClasses();
+
+	if (DefaultFirstPersonAnimClass)
+	{
+		if (USkeletalMeshComponent* FirstPersonMesh = GetFirstPersonMesh())
+		{
+			if (FirstPersonMesh->AnimClass != DefaultFirstPersonAnimClass)
+			{
+				FirstPersonMesh->SetAnimInstanceClass(DefaultFirstPersonAnimClass);
+			}
+		}
+	}
+
+	if (DefaultThirdPersonAnimClass && GetMesh() && GetMesh()->AnimClass != DefaultThirdPersonAnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(DefaultThirdPersonAnimClass);
+	}
+}
+
+float AChronosCharacter::PlayWeaponMontage(UAnimMontage* Montage, float PlayRate)
+{
+	if (!Montage)
+	{
+		return 0.f;
+	}
+
+	// 本地玩家播在第一人称手臂上；敌人（无本地控制）播在身体网格上
+	USkeletalMeshComponent* TargetMesh = IsLocallyControlled() ? GetFirstPersonMesh() : nullptr;
+	if (!TargetMesh)
+	{
+		TargetMesh = GetMesh();
+	}
+	if (!TargetMesh)
+	{
+		return 0.f;
+	}
+
+	UAnimInstance* AnimInstance = TargetMesh->GetAnimInstance();
+	if (!AnimInstance)
+	{
+		return 0.f;
+	}
+
+	return AnimInstance->Montage_Play(Montage, PlayRate);
 }
 
 FName AChronosCharacter::GetHeldWeaponSocketName() const
@@ -353,6 +500,20 @@ void AChronosCharacter::HandleDeath(AActor* DamagedActor, AActor* Killer)
 		{
 			DisableInput(PC);
 		}
+	}
+	else if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		// 必须先停掉 AI 逻辑再 UnPossess。StateTree 的上下文是「Actor + Controller」，
+		// UnPossess 以及随后（蓝图里 10s 后）的 DestroyActor 会让这个上下文失效，
+		// 而 StateTree 组件仍在 Tick，于是持续报
+		// "The tree started with a valid context and it's now invalid"。
+		// StopLogic 还会走一遍 ExitState，正好连带清理敌人的连发计时器。
+		if (UBrainComponent* Brain = AIController->GetBrainComponent())
+		{
+			Brain->StopLogic(TEXT("Death"));
+		}
+
+		AIController->UnPossess();
 	}
 	else if (AController* ControllerRef = GetController())
 	{

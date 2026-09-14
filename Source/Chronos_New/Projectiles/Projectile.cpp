@@ -1,7 +1,9 @@
 #include "Projectiles/Projectile.h"
 
+#include "Audio/ChronosAudioSubsystem.h"
 #include "Components/HealthComponent.h"
 #include "Components/SphereComponent.h"
+#include "Feedback/ChronosFeedbackSubsystem.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "NiagaraComponent.h"
@@ -78,7 +80,10 @@ void AChronosProjectile::ActivateProjectile(AActor* NewInstigator, const FVector
 
 	if (TrailSystem)
 	{
-		TrailComponent->Activate(true);
+		// 子弹从对象池复用，上一发 Ribbon 的采样点在 Deactivate 后仍可能残留，
+		// 复用时会从旧位置向新位置连线，表现为尾迹来回曲折。
+		// ReinitializeSystem 会彻底重建模拟状态，比 Activate(bReset) 干净。
+		TrailComponent->ReinitializeSystem();
 	}
 
 	bActive = 1;
@@ -104,7 +109,8 @@ void AChronosProjectile::DeactivateProjectile()
 	bActive = 0;
 	ProjectileMovement->StopMovementImmediately();
 	ProjectileMovement->Deactivate();
-	TrailComponent->Deactivate();
+	// 立即清空粒子，避免残留的 Ribbon 采样点被下一发复用（表现为曲折尾迹）
+	TrailComponent->DeactivateImmediate();
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	OnProjectileDeactivated.Broadcast(this);
@@ -143,10 +149,36 @@ void AChronosProjectile::HandleImpact(AActor* OtherActor, UPrimitiveComponent* O
 		return;
 	}
 
-	// 一击必杀：命中任何持有生命组件的实体直接致命
+	// 一击必杀：命中任何持有生命组件的实体直接致命。
+	// bKillingBlow 在扣血之前取 —— 一击必杀规则下"命中时还活着"就等于"这一发打死了他"。
 	if (UHealthComponent* TargetHealth = OtherActor->FindComponentByClass<UHealthComponent>())
 	{
+		const bool bKillingBlow = TargetHealth->IsAlive();
 		TargetHealth->TakeDamage(GetInstigator());
+
+		// ImpactPoint 是 FVector_NetQuantize（丢了精度），统一转成 FVector 再做判断
+		FVector FeedbackLocation(Hit.ImpactPoint);
+		if (FeedbackLocation.IsNearlyZero())
+		{
+			FeedbackLocation = OtherActor->GetActorLocation();
+		}
+
+		if (UChronosFeedbackSubsystem* Feedback = GetWorld()->GetSubsystem<UChronosFeedbackSubsystem>())
+		{
+			Feedback->NotifyHitConfirmed(GetInstigator(), FeedbackLocation, bKillingBlow);
+		}
+	}
+	else if (UChronosAudioSubsystem* Audio = GetWorld()->GetSubsystem<UChronosAudioSubsystem>())
+	{
+		// 打到环境：给一记短促的撞击声，让"子弹钉在墙上"这件事有听觉反馈。
+		// 注意这里不走 NotifyHitConfirmed —— 打墙不能计入命中率。
+		FVector FeedbackLocation(Hit.ImpactPoint);
+		if (FeedbackLocation.IsNearlyZero())
+		{
+			FeedbackLocation = OtherActor->GetActorLocation();
+		}
+		Audio->PlaySfxAtLocation(EChronosSfx::HitFlesh, FeedbackLocation, 0.35f,
+			FMath::FRandRange(1.3f, 1.7f));
 	}
 
 	// 对可击碎的物理体施加冲量，增强打击感

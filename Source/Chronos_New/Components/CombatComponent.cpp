@@ -1,6 +1,7 @@
 #include "Components/CombatComponent.h"
 
 #include "Characters/ChronosCharacter.h"
+#include "Feedback/ChronosFeedbackSubsystem.h"
 #include "Weapons/ChronosWeapon.h"
 #include "Weapons/WeaponUser.h"
 
@@ -53,6 +54,15 @@ void UCombatComponent::EquipWeapon(TScriptInterface<IWeaponUser> NewWeapon)
 	}
 
 	OnWeaponChanged.Broadcast(OldWeapon, CurrentWeapon);
+
+	// 拾取反馈：只有本地玩家捡到枪才响（敌人出生自动装备也会走这里，不该有声音）
+	if (Holder->IsPlayerControlled())
+	{
+		if (UChronosFeedbackSubsystem* Feedback = GetWorld()->GetSubsystem<UChronosFeedbackSubsystem>())
+		{
+			Feedback->NotifyWeaponPickedUp(Holder->GetActorLocation());
+		}
+	}
 }
 
 void UCombatComponent::ThrowCurrentWeapon(const FVector& Direction)
@@ -84,6 +94,8 @@ void UCombatComponent::DropCurrentWeapon()
 
 void UCombatComponent::HandleAmmoChanged(int32 RemainingAmmo, int32 MaxAmmo)
 {
+	OnAmmoChanged.Broadcast(RemainingAmmo, MaxAmmo);
+
 	// SUPERHOT 规则：弹药耗尽的武器自动向前投掷，空枪即攻击
 	if (RemainingAmmo <= 0 && CurrentWeapon.GetObject())
 	{

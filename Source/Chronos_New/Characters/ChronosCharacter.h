@@ -6,6 +6,8 @@
 #include "ChronosCharacter.generated.h"
 
 class AChronosWeapon;
+class UAnimInstance;
+class UAnimMontage;
 class UCameraComponent;
 class UCombatComponent;
 class UHealthComponent;
@@ -64,6 +66,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Chronos|Input", meta = (ClampMin = "0.01"))
 	float MouseSensitivity = 1.f;
 
+	/** 无武器时的第一人称手臂动画实例；留空则在首次换装时自动记录当前值 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chronos|Animation")
+	TSubclassOf<UAnimInstance> DefaultFirstPersonAnimClass;
+
+	/** 无武器时的第三人称身体动画实例；留空则在首次换装时自动记录当前值 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chronos|Animation")
+	TSubclassOf<UAnimInstance> DefaultThirdPersonAnimClass;
+
+	/** 投掷蒙太奇（SUPERHOT 的核心动作之一，右手把枪甩出去） */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chronos|Animation")
+	TObjectPtr<UAnimMontage> ThrowMontage;
+
 	/**
 	 * 本角色需要的输入映射上下文列表，BeginPlay 时按 MappingPriority 依次推送。
 	 * 输入上下文跟随 Pawn 而非 Controller，保证任何控制器下移动/视角都可用。
@@ -81,6 +95,26 @@ public:
 	/** 武器应附加到的骨骼网格组件：优先第一人称手臂网格 */
 	UFUNCTION(BlueprintPure, Category = "Chronos|Combat")
 	USkeletalMeshComponent* GetHeldWeaponAttachComponent() const;
+
+	/** 第一人称手臂网格（不存在则返回 nullptr，与 GetHeldWeaponAttachComponent 的回退语义区分） */
+	UFUNCTION(BlueprintPure, Category = "Chronos|Animation")
+	USkeletalMeshComponent* GetFirstPersonMesh() const;
+
+	/**
+	 * 切换到武器对应的动画实例（由武器 BP 在 OnEquipVisuals 中调用）。
+	 * 首次调用时会把当前动画实例记录为"无武器默认值"，无需在蓝图里额外配置。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Chronos|Animation")
+	void SetWeaponAnimClasses(TSubclassOf<UAnimInstance> FirstPersonAnimClass,
+		TSubclassOf<UAnimInstance> ThirdPersonAnimClass);
+
+	/** 还原无武器姿态（由武器 BP 在 OnUnequipVisuals 中调用） */
+	UFUNCTION(BlueprintCallable, Category = "Chronos|Animation")
+	void RestoreDefaultAnimClasses();
+
+	/** 在持械表现网格上播放蒙太奇：本地玩家走第一人称手臂，其余（敌人）走身体网格 */
+	UFUNCTION(BlueprintCallable, Category = "Chronos|Animation")
+	float PlayWeaponMontage(UAnimMontage* Montage, float PlayRate = 1.f);
 
 	/** 武器附加插槽名 */
 	FName GetHeldWeaponSocketName() const;
@@ -108,6 +142,13 @@ protected:
 	void OnJumpStarted(const FInputActionValue& Value);
 	void OnJumpEnded(const FInputActionValue& Value);
 	void OnFireStarted(const FInputActionValue& Value);
+
+	/**
+	 * 松开开火键。全自动武器靠它停止连发 —— 只绑 Started 不绑 Completed 的话，
+	 * 按一次鼠标 bIsFiring 就永远是 true，步枪会一直打到弹药耗尽。
+	 */
+	void OnFireCompleted(const FInputActionValue& Value);
+
 	void OnThrowStarted(const FInputActionValue& Value);
 	void OnInteractStarted(const FInputActionValue& Value);
 
@@ -123,7 +164,12 @@ protected:
 	TObjectPtr<UCombatComponent> CombatComponent;
 
 private:
+	/** 记录"无武器默认动画实例"，供 RestoreDefaultAnimClasses 还原 */
+	void CacheDefaultAnimClasses();
+
 	UCameraComponent* CachedCamera = nullptr;
+
+	bool bDefaultAnimClassesCached = false;
 
 	/** 当前准星焦点交互物（弱引用，防止悬停对象被销毁后悬挂） */
 	TWeakObjectPtr<UObject> FocusedInteractable;

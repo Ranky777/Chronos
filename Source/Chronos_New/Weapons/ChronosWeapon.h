@@ -37,6 +37,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Chronos|Weapon")
 	void InitFromData(UWeaponDataAsset* Data);
 
+	/**
+	 * 覆写剩余弹药。敌人出生时按难度给一个与数据资产不同的初始值，
+	 * 这样"敌人版武器"不需要再复制一份数据资产 —— 武器属性与 AI 难度是两回事。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Chronos|Weapon")
+	void SetRemainingAmmo(int32 NewAmmo);
+
 	//~ IInteractable
 	virtual void OnInteract(AChronosCharacter* Interactor) override;
 	virtual bool CanInteract(const AChronosCharacter* Interactor) const override;
@@ -80,9 +87,28 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Chronos|Weapon")
 	void OnFireVisuals();
 
-	/** 入手表现钩子：蓝图播放装备动画/音效 */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Chronos|Weapon")
+	/** 播放数据资产上配置的开火音效；未配置则无声 */
+	void PlayFireSound();
+
+	/**
+	 * 入手表现钩子：把模板的 FP/TP 武器网格挂到角色骨骼、
+	 * 切换武器动画实例（ABP_FP_Pistol / ABP_TP_Pistol 等）、播放装备蒙太奇。
+	 * 持有者可从 GetOwner() 取得（C++ 在调用前已 SetOwner）。
+	 *
+	 * C++ 提供默认实现，动画实例取自 WeaponData 的 FirstPerson/ThirdPersonAnimClass。
+	 * 这样裸 AChronosWeapon（不带任何蓝图逻辑）也能正确表现 —— 敌人若因配置丢失
+	 * 生成了裸武器，玩家拾取后依然会切换持枪 ABP。蓝图可覆写以加入自己的表现。
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Chronos|Weapon")
 	void OnEquipVisuals();
+
+	/**
+	 * 脱手表现钩子（投掷 / 丢弃 / 死亡掉落）：收起 FP/TP 武器网格并把
+	 * PreviousHolder 的动画实例还原为无武器姿态。
+	 * C++ 默认实现与 OnEquipVisuals 对称，蓝图可覆写。
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Chronos|Weapon")
+	void OnUnequipVisuals(AChronosCharacter* PreviousHolder);
 
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -92,6 +118,15 @@ private:
 	void UpdateRestState();
 	void Throw(const FVector& Direction, AChronosCharacter* Thrower);
 	void Drop(AChronosCharacter* Dropper);
+
+	/**
+	 * 显隐蓝图提供的视觉网格（模板的 FP_Weapon / TP_Weapon）。
+	 * C++ 不硬编码组件名：除自身的 WeaponMeshComponent 外一律视为视觉网格。
+	 * 装备态显示它们、世界态隐藏它们，避免与物理网格重复渲染成"两把枪"。
+	 *
+	 * @return 受影响���视觉网格数量；为 0 表示这把武器没有视觉网格（裸 C++ 武器）
+	 */
+	int32 SetVisualMeshesHidden(bool bShouldHide);
 
 	UFUNCTION()
 	void OnWeaponHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
@@ -106,13 +141,51 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Chronos|Weapon", meta = (ClampMin = "0"))
 	float ThrowKillSpeedThreshold = 600.f;
 
+	/**
+	 * 投掷者对自身的免疫窗口（真实秒）。武器出手瞬间仍与投掷者胶囊重叠，
+	 * 这段窗口内一律不结算对投掷者的伤害。
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Chronos|Weapon", meta = (ClampMin = "0"))
+	float ThrowerImmunityDuration = 0.35f;
+
+	/** 当前持有者：投掷/丢弃时决定自伤免疫对象与表现还原目标 */
+	TWeakObjectPtr<AChronosCharacter> CurrentHolder;
+
+	/**
+	 * 进入世界状态后是否已经撞击过环境。
+	 * 未撞击前投掷者永久免疫（武器刚出手、仍在身边）；撞击后免疫只剩时间窗口，
+	 * 于是"扔出去撞墙弹回来砸中自己"依然成立。
+	 */
+	bool bHasHitWorldSinceThrown = false;
+
 	int32 RemainingAmmo = 0;
 	float RefireCooldown = 0.f;
 	double LastFireRealTime = 0.0;
 
+	/**
+	 * 玩家是否正按住开火键。全自动武器在 Tick 里据此按射速持续开火，
+	 * 半自动武器只用它在"松开前不重复触发"上（按一次打一发）。
+	 */
+	bool bIsFiring = false;
+
 	/** 进入世界状态后的最短静止观察时间；期间不可拾取，防止瞬间捡回刚扔的武器 */
 	float MinPickupDelay = 0.5f;
 	bool bAtRest = false;
+
+	/**
+	 * 脱手后的阻尼。武器网格没有 PhysicsAsset，物理引擎会退化成简单形状，
+	 * 没阻尼的话会像球一样一直滚、一直转，玩家很难瞄准拾取。
+	 * 角阻尼给大一些：SUPERHOT 里丢出去的枪应该很快定住，方便下一秒捡起再扔。
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Chronos|Weapon|Physics")
+	float LinearDamping = 0.8f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Chronos|Weapon|Physics")
+	float AngularDamping = 6.f;
+
+	/** 判定"静止"的角速度阈值（度/秒）：低于此值且线速度也够小才算停稳 */
+	UPROPERTY(EditDefaultsOnly, Category = "Chronos|Weapon|Physics")
+	float RestAngularSpeedDeg = 30.f;
 	double LastWorldEnterRealTime = 0.0;
 
 	EWeaponState WeaponState = EWeaponState::InWorld;

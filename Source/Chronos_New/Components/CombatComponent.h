@@ -7,6 +7,7 @@
 class AChronosCharacter;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, TScriptInterface<IWeaponUser>, OldWeapon, TScriptInterface<IWeaponUser>, NewWeapon);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCombatAmmoChanged, int32, RemainingAmmo, int32, MaxAmmo);
 
 /**
  * 单武器槽战斗组件 —— 现在持有 IWeaponUser 接口，完全不依赖具体 Actor 类。
@@ -36,6 +37,13 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Chronos|Combat")
 	FOnWeaponChanged OnWeaponChanged;
+
+	/**
+	 * 当前武器弹药变化（对外转发版，HUD 订阅它）。
+	 * 武器的 OnAmmoChanged 只广播给持有者内部，外部观察者用这个。
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "Chronos|Combat")
+	FOnCombatAmmoChanged OnAmmoChanged;
 
 protected:
 	virtual void BeginPlay() override;
